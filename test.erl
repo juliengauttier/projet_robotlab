@@ -45,13 +45,8 @@ start()->
     salle8!fin,
     salle9!fin,
     ok.
-<<<<<<< HEAD
-
 initSalle(Num)->
-=======
 %commentaire
-salle() ->
->>>>>>> 297ecba3b7fe13a097cac7f5e0ef32bd269ee3e4
 	receive
 		{Voisins,voisins} ->
 
