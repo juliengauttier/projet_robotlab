@@ -1,22 +1,22 @@
--module(test).
--export([start/0,robot/3,salle/4,initSalle/1,explore/1,explore/4,verifsalle/3]).
+-module(test2).
+-export([start/0,robot/3,salle/5,initSalle/1,explore/1,explore/4,verifsalle/3,sortir/2]).
 -import(robotlab,[mur/1,get_robot/1,led/1,reset/0]).
 
 start()->
 	robotlab:reset(),
-	register(salle1,spawn(test,initSalle,[1])),
-	register(salle2,spawn(test,initSalle,[2])),
-	register(salle3,spawn(test,initSalle,[3])),
-	register(salle4,spawn(test,initSalle,[4])),
-	register(salle5,spawn(test,initSalle,[5])),
-	register(salle6,spawn(test,initSalle,[6])),
-	register(salle7,spawn(test,initSalle,[7])),
-	register(salle8,spawn(test,initSalle,[8])),
-	register(salle9,spawn(test,initSalle,[9])),
+	register(salle1,spawn(test2,initSalle,[1])),
+	register(salle2,spawn(test2,initSalle,[2])),
+	register(salle3,spawn(test2,initSalle,[3])),
+	register(salle4,spawn(test2,initSalle,[4])),
+	register(salle5,spawn(test2,initSalle,[5])),
+	register(salle6,spawn(test2,initSalle,[6])),
+	register(salle7,spawn(test2,initSalle,[7])),
+	register(salle8,spawn(test2,initSalle,[8])),
+	register(salle9,spawn(test2,initSalle,[9])),
 
-	register(robot1,spawn(test,robot,[self(),salle1,1])),
-	register(robot3,spawn(test,robot,[self(),salle3,3])),
-	register(robot7,spawn(test,robot,[self(),salle7,7])),
+	register(robot1,spawn(test2,robot,[self(),salle1,1])),
+	register(robot3,spawn(test2,robot,[self(),salle3,3])),
+	register(robot7,spawn(test2,robot,[self(),salle7,7])),
 
 
 	salle1!{[0,salle4,salle2,0],voisins},
@@ -55,22 +55,26 @@ initSalle(Num)->
 
 		io:fwrite("pid : ~p je suis la salle ~p, j'ai pour voisins ~p ~n",[self(),Num,Voisins]),
 	
-		salle(Num,Voisins,1,false),
+		salle(Num,Voisins,1,false,false),
 		ok
 	end.
 
-salle(Num,Voisins,Distance,Robot) ->
-	    io:fwrite("pid : ~p je suis la salle ~p, robot : ~p, Distance : ~p,j'ai pour voisins ~p ~n",[self(),Num,Robot,Distance,Voisins]),
+salle(Num,Voisins,Distance,Robot,EstVisite) ->
+	    io:fwrite("pid : ~p je suis la salle ~p, robot : ~p, Distance : ~p,j'ai pour voisins ~p , je suis visité : ~p ~n",[self(),Num,Robot,Distance,Voisins,EstVisite]),
 	    	receive
 	    		{NVoisins,majVoisins} -> 
 	    			VVoisins = verifsalle(NVoisins,Voisins,[]),
-	    			salle(Num,VVoisins,Distance,Robot),
+	    			salle(Num,lists:reverse(VVoisins),Distance,Robot,true),
 	    			ok;
-	    		{NDistance,majDistance} -> 
-	    			salle(Num,Voisins,NDistance,Robot),
+	    		{majDistance} -> 
+	    			salle(Num,Voisins,Distance+1,Robot,EstVisite),
 	    			ok;
 	    		{NRobot,majRobot} -> 
-	    			salle(Num,Voisins,Distance,NRobot),
+	    			salle(Num,Voisins,Distance,NRobot,EstVisite),
+	    			ok;
+	    		{X,demandeVoisins} ->
+	    			X!{Voisins,envoiVoisins},
+	    			salle(Num,Voisins,Distance,Robot,EstVisite),
 	    			ok
 	    	end.
 
@@ -90,9 +94,25 @@ robot(X,Salle,Num)->
 	robotlab:led(R),
 	Voisins = explore(R),
 	X,Salle!{Voisins,majVoisins},
-	X,Salle!{2,majDistance},
-	ok.
+	X,Salle!{majDistance},
+	X,Salle!{self(),demandeVoisins},
+	receive
+		{NVoisins,envoiVoisins} ->
+			Nsalle = sortir(R,NVoisins),
+			ok
+	end,
 
+	robot(X,Nsalle,Num).
+
+
+sortir(R,[0|T]) ->
+	robotlab:mur(R),
+	sortir(R,T);
+
+sortir(R,[H|T]) ->
+	robotlab:porte(R),
+	robotlab:franchit(R),
+	H.
 
 
 explore(R) -> 
@@ -109,9 +129,6 @@ explore(R,Voisins,X,true) ->
 explore(R,Voisins,X,false)->
 	io:fwrite("pas de porte porte en ~p ~n",[X]),
 	explore(R,lists:append(Voisins,[false]),X+1,robotlab:mur(R)).
-
-
-
 
 
 
