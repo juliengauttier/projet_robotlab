@@ -20,17 +20,17 @@ start() ->
 %	register(salle9,spawn(aze,salle,[salle9,[],[true,true,true,true],0,[1,1,0,0],false,false])),
 
 
-	register(salle1,spawn(aze,salle,[salle1,[],[true,true,true,true],0,[1,1,1,1],false,false])), 
-	register(salle2,spawn(aze,salle,[salle2,[],[true,true,true,true],0,[1,1,1,1],false,false])), 
-	register(salle3,spawn(aze,salle,[salle3,[],[true,true,true,true],0,[1,1,1,1],false,false])), 
+	register(salle1,spawn(aze,salle,[salle1,[],[true,true,true,true],1,[1,1,1,1],false,false])), 
+	register(salle2,spawn(aze,salle,[salle2,[],[true,true,true,true],1,[1,1,1,1],false,false])), 
+	register(salle3,spawn(aze,salle,[salle3,[],[true,true,true,true],1,[1,1,1,1],false,false])), 
 
-	register(salle4,spawn(aze,salle,[salle4,[],[true,true,true,true],0,[1,1,1,1],false,false])), 
+	register(salle4,spawn(aze,salle,[salle4,[],[true,true,true,true],1,[1,1,1,1],false,false])), 
 	register(salle5,spawn(aze,salle,[salle5,[],[true,true,true,true],1,[1,1,1,1],false,false])), 
-	register(salle6,spawn(aze,salle,[salle6,[],[true,true,true,true],0,[1,1,1,1],false,false])), 
+	register(salle6,spawn(aze,salle,[salle6,[],[true,true,true,true],1,[1,1,1,1],false,false])), 
 
-	register(salle7,spawn(aze,salle,[salle7,[],[true,true,true,true],0,[1,1,1,1],false,false])), 
-	register(salle8,spawn(aze,salle,[salle8,[],[true,true,true,true],0,[1,1,1,1],false,false])), 
-	register(salle9,spawn(aze,salle,[salle9,[],[true,true,true,true],0,[1,1,1,1],false,false])),
+	register(salle7,spawn(aze,salle,[salle7,[],[true,true,true,true],1,[1,1,1,1],false,false])), 
+	register(salle8,spawn(aze,salle,[salle8,[],[true,true,true,true],1,[1,1,1,1],false,false])), 
+	register(salle9,spawn(aze,salle,[salle9,[],[true,true,true,true],1,[1,1,1,1],false,false])),
 
 
 	   %%voisins des salle dans l'ordre haut / gauche / bas / droite
@@ -47,9 +47,9 @@ start() ->
 	   salle9!{voisinsInit,[salle6,salle8,salle0,salle0]},
 
 
-	   register(robot1,spawn(aze,robot,[1,self(),salle1,0])),
-	   register(robot3,spawn(aze,robot,[3,self(),salle3,0])),
-	   register(robot7,spawn(aze,robot,[7,self(),salle7,0])),
+	   register(robot2,spawn(aze,robot,[2,self(),salle2,0])),
+	   register(robot5,spawn(aze,robot,[5,self(),salle5,0])),
+	   register(robot8,spawn(aze,robot,[8,self(),salle8,0])),
 
 
 		finDetection(3),
@@ -325,7 +325,7 @@ salle(Nom, Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite) ->
 				Sortie = cheminSortie(Voisins,Portes),
 				if
 					Sortie == []->
-						%io:format("La salle ne contient pas de porte vers la sortie"),
+						io:format("~n~w : distance:~w // chemin :~w ~n",[Nom,SalleDist,Distances]),
 						Robot ! {reponseChemin, getChemin(Voisins,Portes,Distances,minDistVoisin(Portes,Distances))};
 					true->
 						%io:format("La salle contient une porte vers la sortie"),
