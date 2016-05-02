@@ -260,7 +260,7 @@ salle(Nom, Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite) ->
 	
 	receive
 			{exploration,PortesNew}->
-					 io:format("~w : Retour de l'exploration : ~w // ~w // ~w ~n",[Nom,Voisins,PortesNew,Distances]),
+					 io:format("~w EXPLORATION : Retour de l'exploration : ~w // ~w // ~w ~n",[Nom,Voisins,PortesNew,Distances]),
 					 NewDistances = reatribDistVoisin(Voisins,PortesNew,Distances),
 					 %io:format("Suite explo, newdistances ~w, maxist:~w pour la salle ~w ~n",[NewDistances,maxDistVoisin(NewDistances),Nom]),
 					 NewSalleDist = guessNewDist(Voisins,PortesNew,NewDistances,maxDistVoisin(NewDistances)),
@@ -424,7 +424,7 @@ guessNewDist([V|VR],[true|PR],[D|DR],MinDist)->
 					 guessNewDist(VR,PR,DR,MinDist)
 	   end;
 guessNewDist([V|VR],[false|PR],[D|DR],MinDist)->guessNewDist(VR,PR,DR,MinDist);
-guessNewDist([],[],[],MinDist)->MinDist.
+guessNewDist([],[],[],MinDist)->MinDist+1.
 
 sendNotifVoisinUpdate(Nom,[],[],[],NewDist)->[];
 sendNotifVoisinUpdate(Nom,[P|PR],[salle0|VR],[D|DR],NewDist)->
