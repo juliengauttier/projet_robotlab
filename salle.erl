@@ -57,19 +57,4 @@ test(P)->
 
 
 
-start(ListORobots, Sortie, Porte) ->
-	robotlab:labyrinthe(Sortie, Porte, string:join(map(fun({R,S})->integer_to_list(R-1) end, ListORobots),"")),
-	Robots=map( fun({X,_}) -> (robotlab:get_robot(X)) end, ListORobots),
-	Salles=map(fun(X) -> {X,find(ListORobots, X, -1)} end, seq(0, 9)),
-    Pid=initProcesses(Salles),
-	communication(Pid, 1, yolo)
-	%map(fun(P)->spawn(mydemo,test,[P,Pid]) end,Robots)
-.
 
-test(P,PidSalles)->
-	robotlab:porte(P).
-	
-%% Liste des salles avec leur pid, le numéro de la salle et le message
-communication([{N,Pid}|T], NumSalle, Message)->
-	[{_,H2}|T]=lists:filter(fun({Num,_})->Num==NumSalle end, [{N,Pid}|T]),
-	H2!Message.
