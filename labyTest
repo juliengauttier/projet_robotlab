@@ -1,2 +1,10 @@
 
 robotlab:labyrinthe(1,"101011100111","147").
+
+
+robotlab:labyrinthe(1,"111111111111","026").
+
+
+
+%softlock
+robotlab:labyrinthe(9,"111110101111","026").
