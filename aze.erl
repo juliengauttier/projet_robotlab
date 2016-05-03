@@ -1,6 +1,7 @@
 -module(aze).
--export([start/0,rob1/1,mdr/0,rob3/1,rob7/1,robot/4,salle/7,maxDistVoisinAux/2,maxDistVoisin/1,reatribDistVoisin/3,explore/2,sendNotifVoisinUpdate/5,reorderSalle/5,majDistanceVoisin/4,
-getChemin/4,getCheminAux/5,guessNewDist/4,choisirChemin/6,faireTraverserRobot/5,cheminSortie/2,cheminSortieAux/3,finDetection/1,robotDemandeChemin/4,porteVersVoisinCommunicant/3]).
+-export([robotCommuniqueExploration/4,start/0,rob1/1,mdr/0,rob3/1,rob7/1,robot/3,salle/7,maxDistVoisinAux/2,maxDistVoisin/1,reatribDistVoisin/3,explore/2,sendNotifVoisinUpdate/5,sendNotifVoisinUpdateAux/5,reorderSalle/5,majDistanceVoisin/4,
+getChemin/4,getCheminAux/5,guessNewDist/4,choisirChemin/5,faireTraverserRobot/4,cheminSortie/2,cheminSortieAux/3,finDetection/3,robotDemandeChemin/3,porteVersVoisinCommunicant/3,
+unregisterIfPresentInListAux/2,unregisterIfPresentInList/1,comptageSalleRetirer/2]).
 
 mdr()->ok.
 
@@ -19,7 +20,7 @@ start() ->
 %	register(salle8,spawn(aze,salle,[salle8,[],[true,true,true,true],0,[1,1,0,1],false,false])), 
 %	register(salle9,spawn(aze,salle,[salle9,[],[true,true,true,true],0,[1,1,0,0],false,false])),
 
-
+	register(mainproc,self()),
 	register(salle1,spawn(aze,salle,[salle1,[],[true,true,true,true],1,[1,1,1,1],false,false])), 
 	register(salle2,spawn(aze,salle,[salle2,[],[true,true,true,true],1,[1,1,1,1],false,false])), 
 	register(salle3,spawn(aze,salle,[salle3,[],[true,true,true,true],1,[1,1,1,1],false,false])), 
@@ -47,15 +48,15 @@ start() ->
 	   salle9!{voisinsInit,[salle6,salle8,salle0,salle0]},
 
 
-	   register(robot1,spawn(aze,robot,[1,self(),salle1,0])),
+	   register(robot1,spawn(aze,robot,[1,salle1,0])),
 		%register(robot2,spawn(aze,robot,[2,self(),salle2,0])),
-	   register(robot3,spawn(aze,robot,[3,self(),salle3,0])),
+	   register(robot3,spawn(aze,robot,[3,salle3,0])),
 	   %register(robot5,spawn(aze,robot,[5,self(),salle5,0])),
-	   register(robot7,spawn(aze,robot,[7,self(),salle7,0])),
+	   register(robot7,spawn(aze,robot,[7,salle7,0])),
 	   %register(robot8,spawn(aze,robot,[8,self(),salle8,0])),
 
 
-		finDetection(3),
+		finDetection(3,[],false),
 
 	   %receive
 	%fin -> ok
@@ -76,17 +77,84 @@ start() ->
 	   salle7!fin,
 	   salle8!fin,
 	   salle9!fin,
+		
+		unregisterIfPresentInList([mainproc,salle1,salle2,salle3,salle4,salle5,salle6,salle7,salle8,salle9,
+			robot1,robot2,robot3,robot4,robot5,robot6,robot7,robot8,robot9]),
+
 	ok.
 
-finDetection(0)->ok;
-finDetection(N)->
+unregisterIfPresentInList([])->ok;
+unregisterIfPresentInList([Proc|RProcs])->
+	unregisterIfPresentInListAux(Proc,registered()),
+	unregisterIfPresentInList(RProcs).
+	
+unregisterIfPresentInListAux(Proc,[])->ok;
+unregisterIfPresentInListAux(Proc,[Proc|RProcList])->
+	unregister(Proc),
+	ok;
+unregisterIfPresentInListAux(Proc,[ProcList|RProcList])->
+	unregisterIfPresentInListAux(Proc,RProcList).
+	
+	
+
+
+finDetection(0,_,ParoleReservee)->ok;
+finDetection(N,[],ParoleReservee)->
 	receive
-		fin->finDetection(N-1)
+		{demandePermissionParler,RobotProc,RobotNum,Salle}->
+			io:format("demandePermissionParler ~w, (reservee ~w) ~n ",[RobotNum,ParoleReservee]),
+			if
+				ParoleReservee->
+					RobotProc ! {reponsePermissionParler,false},
+					finDetection(N,[],true);
+				true->
+					RobotProc ! {reponsePermissionParler,true},
+					finDetection(N,[],true)
+			end;
+		{communicationSalleDebut,Salle}->
+			io:format("Mainproc : La salle ~w parle (seule)~n",[Salle]),
+			finDetection(N,[Salle],ParoleReservee);
+		{communicationSalleFin,Salle}->
+			io:format("~nERRREURRR COMPTAGE SALLE PARLANTE~n~n~n~n~n~n~n"),
+			finDetection(N,[],ParoleReservee);
+		fin->
+			io:format("~nfin !!~n~n"),
+			finDetection(N-1,[],ParoleReservee)
+	end;
+finDetection(N,SalleParlantes,ParoleReservee)->
+	receive
+		{demandePermissionParler,RobotProc,RobotNum,Salle}->
+			io:format("demandePermissionParler ~w, (reservee ~w) ~n ",[RobotNum,ParoleReservee]),
+			if
+				ParoleReservee->
+					RobotProc ! {reponsePermissionParler,false},
+					finDetection(N,SalleParlantes,true);
+				true->
+					RobotProc ! {reponsePermissionParler,false},
+					finDetection(N,SalleParlantes,true)
+			end;
+		{communicationSalleDebut,Salle}->
+			io:format("Mainproc : La salle ~w parle (~w)~n",[Salle,SalleParlantes]),
+			finDetection(N,[Salle|SalleParlantes],ParoleReservee);
+		{communicationSalleFin,Salle}->
+			io:format("Mainproc : La salle ~w arrete de parler (~w)~n",[Salle,comptageSalleRetirer(Salle,SalleParlantes)]),
+			finDetection(N,comptageSalleRetirer(Salle,SalleParlantes),not(comptageSalleRetirer(Salle,SalleParlantes)==[]));
+		fin->
+			io:format("~nfin !!!~n~n"),
+			finDetection(N-1,SalleParlantes,ParoleReservee)
 	end.
 
 
+
+comptageSalleRetirer(Salle,[])->[];
+comptageSalleRetirer(Salle,[Salle|SR])->comptageSalleRetirer(Salle,SR);
+comptageSalleRetirer(Salle,[S|SR])->[S|comptageSalleRetirer(Salle,SR)].
+	
+
+
+
 %% Pos : 0 coin haut gauche, 1 coin bas gauche, 2 coin bas droite, 3 coin haut droite 
-robot(RobotNum,MainProc, Salle, Pos) ->
+robot(RobotNum, Salle, Pos) ->
 	   %io:format("Robot ~w : entre dans la salle ~w en position ~w ~n",[RobotNum,Salle,Pos]),
 	   Salle ! {self(),demande},  
 	   receive 
@@ -99,7 +167,7 @@ robot(RobotNum,MainProc, Salle, Pos) ->
 					 io:format("Robot ~w :retour2 ~n",[RobotNum]); 
 			  {reponseDemande,false,true} ->
 			  
-			  		robotDemandeChemin(RobotNum,MainProc, Salle, Pos),
+			  		robotDemandeChemin(RobotNum, Salle, Pos),
 					 %io:format("Robot ~w :retour3 ~n",[RobotNum]),
 					% Salle ! {demandeChemin,self()},
 					%receive
@@ -115,10 +183,11 @@ robot(RobotNum,MainProc, Salle, Pos) ->
 					 ok;
 			  {reponseDemande,false,false}->
 			  		%io:format("Robot ~w :retour4 (~w) ~n",[RobotNum,Pos]),
-					 Salle ! {exploration,explore(RobotNum,Pos)},
+					 ExplorationResultat = explore(RobotNum,Pos),
+					 robotCommuniqueExploration(RobotNum,Salle,Pos,ExplorationResultat),
 					 %io:format("Robot ~w : demande chemin ~n",[RobotNum]),
 					 
-					 robotDemandeChemin(RobotNum,MainProc, Salle, Pos),
+					 robotDemandeChemin(RobotNum, Salle, Pos),
 					 %Salle ! {demandeChemin,self()},
 					 %receive
 							%{reponseChemin,ListeCheminPossible}->
@@ -133,29 +202,41 @@ robot(RobotNum,MainProc, Salle, Pos) ->
 					 ok
 	   end.
 		
-robotDemandeChemin(RobotNum,MainProc, Salle, Pos) ->
+robotCommuniqueExploration(RobotNum,Salle,Pos, ExplorationResultat)->
+	mainproc ! {demandePermissionParler,self(),RobotNum,Salle},
+	receive
+		{reponsePermissionParler,true}->
+			io:format("~w demande permission parler acceptee ~n",[RobotNum]),
+			Salle ! {exploration,ExplorationResultat};
+
+		{reponsePermissionParler,false}->
+			%io:format("~w demande permission parler refusee~n",[RobotNum]),
+			robotCommuniqueExploration(RobotNum,Salle,Pos,ExplorationResultat)		
+	end.
+		
+robotDemandeChemin(RobotNum, Salle, Pos) ->
 		Salle ! {demandeChemin,self()},
 		receive
 			{reponseChemin,ListeCheminPossible}->
 				io:format("~nRobot ~w : on prend  parmis les chemins : ~w ~n",[RobotNum,ListeCheminPossible]),
-				choisirChemin(RobotNum,MainProc,Salle,Pos,ListeCheminPossible,ListeCheminPossible);
+				choisirChemin(RobotNum,Salle,Pos,ListeCheminPossible,ListeCheminPossible);
 			{reponseCheminSortie,CheminSortie}->
 				io:format("~n~n~nRobot ~w : on prend la sortie  ~w ~n~n",[RobotNum,CheminSortie]),
-				choisirChemin(RobotNum,MainProc,Salle,Pos,CheminSortie,CheminSortie)
+				choisirChemin(RobotNum,Salle,Pos,CheminSortie,CheminSortie)
 				%%{Voisin,PosToGo} = random:uniform(length(ListeCheminPossible)),
 				%%io:format("Robot ~w : on prend le chemin ~w parmis les chemins : ~w ~n",[RobotNum,X,ListeCheminPossible])
 		end.
 
 
-choisirChemin(RobotNum,MainProc,AncienneSalle,Pos,ListFull,[])->
+choisirChemin(RobotNum,AncienneSalle,Pos,ListFull,[])->
 	%io:format("~n~n~n bouclage de choisir chemin Robot ~w :on rappelle la fonction avec ancienne=~w // pos=~w // listfull=~w // reste de la liste=~w  ~n~n",[RobotNum,AncienneSalle,Pos,ListFull,ListFull]),
 	io:format("Robot ~w, echec des tentatives de prise des chemins ~w, retour dans robotDemandeChemin ~n",[RobotNum,ListFull]),
-	robotDemandeChemin(RobotNum,MainProc, AncienneSalle, Pos);
+	robotDemandeChemin(RobotNum, AncienneSalle, Pos);
 	
-choisirChemin(RobotNum,MainProc,AncienneSalle,Pos,ListFull,[{salle0,PosToGo}|LR])->
-					NewPos = faireTraverserRobot(RobotNum,Pos,PosToGo,salle0,MainProc),
+choisirChemin(RobotNum,AncienneSalle,Pos,ListFull,[{salle0,PosToGo}|LR])->
+					NewPos = faireTraverserRobot(RobotNum,Pos,PosToGo,salle0),
 					AncienneSalle ! {self(),libere};
-choisirChemin(RobotNum,MainProc,AncienneSalle,Pos,ListFull,[{Voisin,PosToGo}|LR])->
+choisirChemin(RobotNum,AncienneSalle,Pos,ListFull,[{Voisin,PosToGo}|LR])->
 	%io:format("~n~nDEBUG Robot ~w : envoie demanderlibre vers ~w ",[RobotNum,Voisin]),
 	Voisin ! {demanderLibre,RobotNum,self()},
 	%io:format(" succees de l'envoie de message ~n~n"),
@@ -165,14 +246,14 @@ choisirChemin(RobotNum,MainProc,AncienneSalle,Pos,ListFull,[{Voisin,PosToGo}|LR]
 			if
 				EstLibre->
 				%io:format("~n~nDEBUG Robot ~w : la salle est libre, on traverse de ~w a ~w ~n~n",[RobotNum,Pos,PosToGo]),
-					NewPos = faireTraverserRobot(RobotNum,Pos,PosToGo,Voisin,MainProc),
+					NewPos = faireTraverserRobot(RobotNum,Pos,PosToGo,Voisin),
 					%io:format("~n~nDEBUG2 Robot ~w : on a parcouru le chemin, la newPos finale vaut ~w",[RobotNum,NewPos]),
 					%io:format("~n Robot ~w : libere son ancienne salle ~w ~n",[RobotNum,AncienneSalle]),
 					AncienneSalle ! {self(),libere},
-					robot(RobotNum,MainProc,Voisin,NewPos);
+					robot(RobotNum,Voisin,NewPos);
 				true ->
 					%io:format("~n~nDEBUGTest Robot ~w : la ~w n'est PAS libre, on rappelle la fonction avec ancienne=~w // pos=~w // listfull=~w // reste de la liste=~w  ~n~n",[RobotNum,Voisin,AncienneSalle,Pos,ListFull,LR]),
-					choisirChemin(RobotNum,MainProc,AncienneSalle,Pos,ListFull,LR)
+					choisirChemin(RobotNum,AncienneSalle,Pos,ListFull,LR)
 			end			
 	end.
 	
@@ -180,11 +261,11 @@ choisirChemin(RobotNum,MainProc,AncienneSalle,Pos,ListFull,[{Voisin,PosToGo}|LR]
 
 
 
-faireTraverserRobot(RobotNum,PosToGo,PosToGo,salle0,MainProc)->
+faireTraverserRobot(RobotNum,PosToGo,PosToGo,salle0)->
 	R=robotlab:get_robot(RobotNum),
 	robotlab:porte(R),
 	robotlab:sort(R),
-	MainProc ! fin,
+	mainproc ! fin,
 	if
 		PosToGo == 0 -> 3;
 		PosToGo == 1 -> 0;
@@ -192,7 +273,7 @@ faireTraverserRobot(RobotNum,PosToGo,PosToGo,salle0,MainProc)->
 		true -> 2
 	end;
 	
-faireTraverserRobot(RobotNum,PosToGo,PosToGo,Voisin,MainProc)->
+faireTraverserRobot(RobotNum,PosToGo,PosToGo,Voisin)->
 	R=robotlab:get_robot(RobotNum),
 	robotlab:porte(R),
 	robotlab:franchit(R),
@@ -203,7 +284,7 @@ faireTraverserRobot(RobotNum,PosToGo,PosToGo,Voisin,MainProc)->
 		true -> 2
 	end;
 		
-faireTraverserRobot(RobotNum,CurrentPos,PosToGo,Voisin,MainProc)->	
+faireTraverserRobot(RobotNum,CurrentPos,PosToGo,Voisin)->	
 	R=robotlab:get_robot(RobotNum),
 	if
 		CurrentPos+1 == 4 ->
@@ -213,10 +294,10 @@ faireTraverserRobot(RobotNum,CurrentPos,PosToGo,Voisin,MainProc)->
 	end,
 	robotlab:mur(R),
 	%io:format("~n~nDEBUG Robot ~w : newPos ~w  ///  posToGo ~w ~n",[RobotNum,NewPos,PosToGo]),
-faireTraverserRobot(RobotNum,NewPos,PosToGo,Voisin,MainProc).
+faireTraverserRobot(RobotNum,NewPos,PosToGo,Voisin).
 				
 
-salleReservee(Nom, Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite,RobotReserveur,RobotReserveurProc)->
+salleReservee(Nom,Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite,RobotReserveur,RobotReserveurProc)->
 	io:format("~w : reservee par ~w ~n",[Nom,RobotReserveur]),
 
 	receive
@@ -232,7 +313,7 @@ salleReservee(Nom, Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite
 				Discovered and not(Test)->
 					io:format("~n~n~w ANNULATION NOTIF(reservee) : pas de porte vers, on acquitte ~w ~n",[Nom,NomSalleCom]),
 					ProcSalleCom ! {acquittementNotif,Nom},
-					salleReservee(Nom, Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite,RobotReserveur,RobotReserveurProc);
+					salleReservee(Nom,Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite,RobotReserveur,RobotReserveurProc);
 				true->ok
 			end,
 			UpdateDistance = majDistanceVoisin(Voisins,Distances,NomSalleCom, DistCom),
@@ -249,15 +330,15 @@ salleReservee(Nom, Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite
 					io:format("~w CASCADE(reservee)  : nouvelle dist differente de la part de ~w  : (~w vs ~w), notifier les voisins ~n",[Nom,NomSalleCom,SalleDist,NewSalleDist]),
 					FinalDistances = sendNotifVoisinUpdate(Nom,Portes,Voisins,UpdateDistance,NewSalleDist+1)
 			end,
-			salleReservee(Nom, Voisins,Portes,NewSalleDist,FinalDistances,Discovered,CouramentVisite,RobotReserveur,RobotReserveurProc);
+			salleReservee(Nom,Voisins,Portes,NewSalleDist,FinalDistances,Discovered,CouramentVisite,RobotReserveur,RobotReserveurProc);
 		{demanderLibre,RobotNum,RobotProc}->
 			%io:format("~w : le robot ~w demande si libre mais la salle est deja reservee (par ~w) ~n",[Nom,RobotNum,RobotReserveur]),
 			RobotProc ! {reponseLibre,false},
-			salleReservee(Nom, Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite,RobotReserveur,RobotReserveurProc)
+			salleReservee(Nom,Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite,RobotReserveur,RobotReserveurProc)
 			
 	end.
 	
-salle(Nom, Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite) ->
+salle(Nom,Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite) ->
 	%io:format("~w : debut de fonction ~w // ~w // ~w  // ~w ~n",[Nom,SalleDist,Distances,Discovered,CouramentVisite]),
 	io:format("~w : debut SALLE DIST ~w  /// VOISINS ~w ~n",[Nom,SalleDist,Distances]),
 	
@@ -286,7 +367,7 @@ salle(Nom, Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite) ->
 						Discovered and not(Test)->
 							io:format("~n~w  ANNUL NOTIF : pas de porte vers, on acquitte ~w ~n",[Nom,NomSalleCom]),
 							ProcSalleCom ! {acquittementNotif,Nom},
-							salle(Nom, Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite);
+							salle(Nom,Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite);
 						true->ok
 					end,
 					 UpdateDistance = majDistanceVoisin(Voisins,Distances,NomSalleCom, DistCom),
@@ -303,7 +384,7 @@ salle(Nom, Voisins,Portes,SalleDist,Distances,Discovered,CouramentVisite) ->
 							io:format("~w CASCADE : nouvelle dist differente (~w vs ~w), notifier les voisins ~n",[Nom,SalleDist,NewSalleDist]),
 							FinalDistances = sendNotifVoisinUpdate(Nom,Portes,Voisins,UpdateDistance,NewSalleDist+1)
 					end,
-					 salle(Nom, Voisins,Portes,NewSalleDist,FinalDistances,Discovered,CouramentVisite);
+					 salle(Nom,Voisins,Portes,NewSalleDist,FinalDistances,Discovered,CouramentVisite);
 			{X,demande} -> 
 					X!{reponseDemande,CouramentVisite,Discovered},
 					salle(Nom,Voisins,Portes,SalleDist,Distances,Discovered,true);
@@ -429,10 +510,18 @@ guessNewDist([V|VR],[true|PR],[D|DR],MinDist)->
 guessNewDist([V|VR],[false|PR],[D|DR],MinDist)->guessNewDist(VR,PR,DR,MinDist);
 guessNewDist([],[],[],MinDist)->MinDist+1.
 
-sendNotifVoisinUpdate(Nom,[],[],[],NewDist)->[];
-sendNotifVoisinUpdate(Nom,[P|PR],[salle0|VR],[D|DR],NewDist)->
-	   [D|sendNotifVoisinUpdate(Nom,PR,VR,DR,NewDist)];
-sendNotifVoisinUpdate(Nom,[true|PR],[V|VR],[D|DR],NewDist)->
+
+sendNotifVoisinUpdate(Nom,Portes,Voisins,UpdateDistance,NewSalleDist)->
+	io:format("~w parle",[Nom]),
+	mainproc ! {communicationSalleDebut,Nom},
+	sendNotifVoisinUpdateAux(Nom,Portes,Voisins,UpdateDistance,NewSalleDist).
+
+sendNotifVoisinUpdateAux(Nom,[],[],[],NewDist)->
+	mainproc ! {communicationSalleFin,Nom},
+	[];
+sendNotifVoisinUpdateAux(Nom,[P|PR],[salle0|VR],[D|DR],NewDist)->
+	   [D|sendNotifVoisinUpdateAux(Nom,PR,VR,DR,NewDist)];
+sendNotifVoisinUpdateAux(Nom,[true|PR],[V|VR],[D|DR],NewDist)->
 	   io:format("~w ENVOI NOTIF : vers ~w~n",[Nom,V]), 
 	   V ! {miseAJourDistanceVoisin,Nom,self(),NewDist},
 		receive 
@@ -440,14 +529,14 @@ sendNotifVoisinUpdate(Nom,[true|PR],[V|VR],[D|DR],NewDist)->
 				io:format("~w REPONSE ACK NOTIF : reponse acquitement de ~w ~n",[Nom,V]),
 				MajDist = D;
 			{miseAJourDistanceVoisin,V,ProcSalleCom,DistCom}->
-				io:format("~w REPONSE NOTIF : réponse MAJDV de ~w (~w), qui a mit sa distance à ~w ",[Nom,V,ProcSalleCom,DistCom]),
+				io:format("~w REPONSE NOTIF : réponse MAJDV de ~w (~w), qui a mit sa distance à ~w ~n",[Nom,V,ProcSalleCom,DistCom]),
 				MajDist = DistCom,
 				V ! {acquittementNotif,Nom}
 		end,
 	   %%io:format("Debug2 salle ~w, on a les arguments ~w  ~n",[Nom,VR]), 
-	   [MajDist | sendNotifVoisinUpdate(Nom,PR,VR,DR,NewDist)];
-sendNotifVoisinUpdate(Nom,[false|PR],[V|VR],[D|DR],NewDist)->
-	[D|sendNotifVoisinUpdate(Nom,PR,VR,DR,NewDist)].
+	   [MajDist | sendNotifVoisinUpdateAux(Nom,PR,VR,DR,NewDist)];
+sendNotifVoisinUpdateAux(Nom,[false|PR],[V|VR],[D|DR],NewDist)->
+	[D|sendNotifVoisinUpdateAux(Nom,PR,VR,DR,NewDist)].
 
 
 majDistanceVoisin([ProcSalleCom|VR],[DistancesOld|DR],ProcSalleCom,DistCom)->[DistCom|majDistanceVoisin(VR,DR,ProcSalleCom,DistCom)];
