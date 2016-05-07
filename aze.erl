@@ -48,12 +48,12 @@ start() ->
 	   salle9!{voisinsInit,[salle6,salle8,salle0,salle0]},
 
 
-	   register(robot1,spawn(aze,robot,[1,salle1,0])),
-		%register(robot2,spawn(aze,robot,[2,self(),salle2,0])),
-	   register(robot3,spawn(aze,robot,[3,salle3,0])),
-	   %register(robot5,spawn(aze,robot,[5,self(),salle5,0])),
-	   register(robot7,spawn(aze,robot,[7,salle7,0])),
-	   %register(robot8,spawn(aze,robot,[8,self(),salle8,0])),
+	   %register(robot1,spawn(aze,robot,[1,salle1,0])),
+		register(robot2,spawn(aze,robot,[2,salle2,0])),
+	   %register(robot3,spawn(aze,robot,[3,salle3,0])),
+	   register(robot5,spawn(aze,robot,[5,salle5,0])),
+	   %register(robot7,spawn(aze,robot,[7,salle7,0])),
+	   register(robot8,spawn(aze,robot,[8,salle8,0])),
 
 
 		finDetection(3,[],false),

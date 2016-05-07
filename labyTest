@@ -1,10 +1,45 @@
 
 robotlab:labyrinthe(1,"101011100111","147").
 
+robotlab:labyrinthe(2,"101011110011","147").
+robotlab:labyrinthe(2,"101011110011","147").
+
+
+
 
 robotlab:labyrinthe(1,"111111111111","026").
 
 
 
-%softlock
+
 robotlab:labyrinthe(9,"111110101111","026").
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+robotlab:labyrinthe(1,"111111111111","026").
+
+
+
+
+
+
+%deplacement bizarre
+robotlab:labyrinthe(1,"011011111101","867").
+
+
+
+
